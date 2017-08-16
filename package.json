@@ -1,6 +1,6 @@
 {
   "name": "kendi-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "适配于 smart-modular 构建方案的脚手架工具",
   "main": "index.js",
   "bin": {
