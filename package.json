@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "适配于 smart-modular 构建方案的脚手架工具",
   "main": "index.js",
+  "bin": {
+    "kendi": "bin/kendi",
+    "kendi-init": "bin/kendi-init",
+    "kendi-add": "bin/kendi-add"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "init": "node bin/kendi init my-project"
