@@ -1,0 +1,139 @@
+#!/usr/bin/env node
+
+var download = require('download-git-repo')
+var program = require('commander')
+var exists = require('fs').existsSync
+var path = require('path')
+var ora = require('ora')
+var home = require('user-home')
+var chalk = require('chalk')
+var tildify = require('tildify')
+var generate = require('../lib/generate');
+var inquirer = require('inquirer')
+var rm = require('rimraf').sync
+var logger = require('../lib/logger')
+var checkVersion = require('../lib/check-version')
+var localPath = require('../lib/local-path')
+
+var isLocalPath = localPath.isLocalPath
+var getTemplatePath = localPath.getTemplatePath
+
+/**
+ * Usage.
+ */
+
+program
+  .usage('<page-name>')
+  .option('-c, --clone', 'use git clone')
+
+/**
+ * Help.
+ */
+
+program.on('--help', function () {
+  console.log('  Examples:')
+  console.log()
+  console.log(chalk.gray('    # add a new page template'))
+  console.log('    $ kendi add kandianPage')
+  console.log()
+})
+
+/**
+ * Help.
+ */
+
+function help () {
+  program.parse(process.argv)
+  if (program.args.length < 1) return program.help()
+}
+help()
+
+/**
+ * Settings.
+ */
+var pageName = program.args[0]
+var inPlace = exists(path.join(process.cwd(),'src')) && exists(path.join(process.cwd(),'/.kendirc'))
+var name = path.relative('../', process.cwd())
+var to = path.resolve('.')
+
+var clone = program.clone || false
+
+var tmp = path.join(home, '.kendi-templates')
+
+/**
+ * Padding.
+ */
+
+console.log()
+process.on('exit', function () {
+  console.log()
+})
+
+if (!inPlace) {
+  logger.fatal('Please init project first or call [add] command at the root directory of project')
+} else if (exists(path.join(to,'src/views/pages', pageName))) {
+  inquirer.prompt([{
+    type: 'confirm',
+    message: 'Target page exists. Continue?',
+    name: 'ok'
+  }]).then(function(answers) {
+      if (answers.ok) {
+        run()
+      }
+  })
+} else {
+  run()
+}
+
+
+/**
+ * Check, download and generate the project.
+ */
+
+function run () {
+  var needDownload = true;
+
+  if (isLocalPath(tmp)) {
+    var templatePath = getTemplatePath(tmp)
+    console.log(`> Use cached template at ${chalk.yellow(tildify(tmp))}`)
+    if (exists(templatePath)) {
+      needDownload = false;
+      generate(name, templatePath, to, `fragment/${pageName}`, function (err) {
+        if (err) logger.fatal(err)
+        console.log()
+        logger.success('add new page success')
+      })
+    }
+  }
+
+  if (needDownload) {
+    checkVersion(function () {
+      // use official templates
+      var officialTemplate = 'gisonyeung/kendi-tpl'
+      downloadAndGenerate(officialTemplate)
+    })
+  }
+}
+
+
+/**
+ * Download a generate from a template repo.
+ *
+ * @param {String} template
+ */
+
+function downloadAndGenerate (template) {
+  var spinner = ora('downloading template')
+  spinner.start()
+  // Remove if local template exists
+  if (exists(tmp)) rm(tmp)
+  download(template, tmp, { clone: clone }, function (err) {
+    spinner.stop()
+    if (err) logger.fatal('Failed to download repo ' + template + ': ' + err.message.trim())
+    generate(name, tmp, to, `fragment/${pageName}`, function (err) {
+      if (err) return logger.fatal(err)
+      console.log() 
+      logger.success('[done]add new page success')
+    })
+  })
+}
